@@ -101,7 +101,7 @@
             height: 100%; 
             z-index: 20; 
             pointer-events: none; 
-            overflow: hidden; 
+            overflow: visible; 
         }
         
         .sticker { 
@@ -174,7 +174,6 @@
 <body>
 
     <header>
-        <!-- [원래의 깔끔하고 직관적인 기본 타이틀로 복구] -->
         <h1 id="welcome-title">Todo</h1>
         <div style="font-size: 0.9rem; font-weight: 700; color: #475569; display: flex; gap: 12px;">
             <span>방: <strong id="room-display" style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="editRoomName()">로딩중</strong></span>
@@ -258,6 +257,19 @@
         const calendarEl = document.getElementById('calendar');
         const weekTabsEl = document.getElementById('week-tabs');
 
+        // --- [★ 버그 수정: 누락되어 있던 달성률 계산기 함수 정의!] ---
+        function updateTracker(total, completed) {
+            const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const progressText = document.getElementById('progress-text');
+            const progressFill = document.getElementById('progress-fill');
+            if (progressText) {
+                progressText.innerText = `${percent}% (${completed} / ${total})`;
+            }
+            if (progressFill) {
+                progressFill.style.width = `${percent}%`;
+            }
+        }
+
         function openModal({ title, desc = '', defaultValue = '', isConfirm = false, confirmText = '' }) {
             return new Promise((resolve) => {
                 const overlay = document.getElementById('modal-overlay');
@@ -338,12 +350,10 @@
 
         database.ref('todos/' + myRoom).on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                todos = data;
-                localStorage.setItem(`cache_todos_${myRoom}`, JSON.stringify(todos));
-                renderTabs();
-                renderCalendar();
-            }
+            todos = data || {}; // 데이터가 없을 경우 안전하게 빈 객체로 초기화
+            localStorage.setItem(`cache_todos_${myRoom}`, JSON.stringify(todos));
+            renderTabs();
+            renderCalendar();
         });
 
         function saveToFirebase() {
@@ -481,16 +491,17 @@
             renderCalendar();
         }
 
-        // --- 2. 스티커 기능 (동적 한계선 강제 제어 시스템) ---
+        // --- 2. 스티커 기능 (동적 한계선 + Firebase 실시간 연동 고도화) ---
         const stickerLayer = document.getElementById('sticker-layer');
         const lockBtn = document.getElementById('lock-btn');
         let isLocked = true; 
         let activeSticker = null;
         let offsetX = 0, offsetY = 0;
 
+        // 초기 상태 세팅 (스티커 편집 모드는 꺼진 상태로 시작)
         stickerLayer.classList.add('locked');
         lockBtn.classList.add('locked');
-        lockBtn.innerHTML = '스티커 잠금';
+        lockBtn.innerHTML = '스티커 편집'; // 클릭하면 잠금이 풀려 편집이 가능해진다는 뜻!
 
         function getUpperLimitY() {
             const weekTabs = document.getElementById('week-tabs');
@@ -505,19 +516,89 @@
             if (isLocked) { 
                 stickerLayer.classList.add('locked'); 
                 lockBtn.classList.add('locked'); 
-                lockBtn.innerHTML = '스티커 잠금'; 
+                lockBtn.innerHTML = '스티커 편집'; 
             } else { 
                 stickerLayer.classList.remove('locked'); 
                 lockBtn.classList.remove('locked'); 
-                lockBtn.innerHTML = '스티커 편집'; 
+                lockBtn.innerHTML = '스티커 잠금'; 
             }
         }
 
+        // --- [★ 신규 업그레이드: 스티커 데이터를 Firebase에 실시간 저장] ---
+        function saveStickersToFirebase() {
+            const stickers = document.querySelectorAll('.sticker');
+            const data = [];
+            stickers.forEach((el, index) => {
+                const img = el.querySelector('img');
+                if (img) {
+                    data.push({
+                        id: el.dataset.id || 'sticker_' + Date.now() + '_' + index,
+                        src: img.src,
+                        left: parseInt(el.style.left) || 0,
+                        top: parseInt(el.style.top) || 0,
+                        width: el.style.width || '120px',
+                        height: el.style.height || '120px'
+                    });
+                }
+            });
+            database.ref('stickers/' + myRoom).set(data);
+        }
+
+        // --- [★ 신규 업그레이드: 스티커 DB가 바뀌면 화면 자동 업데이트] ---
+        database.ref('stickers/' + myRoom).on('value', (snapshot) => {
+            if (activeSticker) return; // 사용자가 현재 스티커를 움직이고 있을 때는 화면이 리셋되지 않게 일시 정지
+            const data = snapshot.val();
+            stickerLayer.innerHTML = '';
+            if (data) {
+                const list = Array.isArray(data) ? data : Object.values(data);
+                list.forEach(item => {
+                    createStickerElement(item.src, item.left, item.top, item.width, item.height, item.id);
+                });
+            }
+        });
+
+        // --- [★ 신규 업그레이드: 대용량 이미지 렉을 막아주는 브라우저 압축 시스템] ---
+        function compressAndProcessImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_SIZE = 300; // 스티커는 최대 300픽셀 너비로 충분!
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 화질 70% 수준의 가벼운 jpeg로 압축 변환해 전달
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    callback(dataUrl);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 이미지 인풋 이벤트
         document.getElementById('sticker-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(event) { 
+            
+            compressAndProcessImage(file, function(compressedBase64) { 
                 const limitY = getUpperLimitY();
 
                 const scrollY = window.pageYOffset || document.documentElement.scrollTop;
@@ -529,46 +610,60 @@
                     spawnY = limitY + 20; 
                 }
                 
-                if (isLocked) toggleStickerLock();
+                if (isLocked) toggleStickerLock(); // 새로 등록하면 편집 상태로 즉시 변경
                 
-                createSticker(event.target.result, spawnX, spawnY); 
-            };
-            reader.readAsDataURL(file);
+                const uniqueId = 'sticker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                createStickerElement(compressedBase64, spawnX, spawnY, '120px', '120px', uniqueId); 
+                saveStickersToFirebase(); // 바로 Firebase에 업로드
+            });
+            e.target.value = ''; // 같은 이미지 재업로드 가능하도록 초기화
         });
 
-        function createSticker(src, left, top) {
+        // 실제 스티커 DOM 노드를 생성해 주는 함수
+        function createStickerElement(src, left, top, width, height, id) {
             const div = document.createElement('div');
             div.className = 'sticker';
-            div.style.left = left + 'px'; div.style.top = top + 'px';
+            div.dataset.id = id;
+            div.style.left = left + 'px'; 
+            div.style.top = top + 'px';
+            div.style.width = width || '120px';
+            div.style.height = height || '120px';
             div.innerHTML = `<img src="${src}" alt="sticker">`;
 
-            // [모바일 터치 완벽 차단 삭제 버튼]
+            // 모바일 완벽 차단용 삭제 버튼 추가
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete-sticker';
             deleteBtn.innerText = '×';
 
             const deleteAction = function(e) {
-                e.stopPropagation(); // 스티커 터치(드래그) 이벤트를 완벽하게 중간에서 컷!
-                e.preventDefault();  // 오작동 및 터치 무한 버그 방지
+                e.stopPropagation(); 
+                e.preventDefault();  
                 div.remove();
+                saveStickersToFirebase(); // DB에서도 영구 삭제
             };
 
             deleteBtn.addEventListener('click', deleteAction);
             deleteBtn.addEventListener('touchstart', deleteAction, { passive: false });
             div.appendChild(deleteBtn);
 
-            // --- [PC 드래그 시작] ---
+            // 드래그 및 크기 조절 후 마우스가 떼어졌을 때 데이터 저장
+            div.addEventListener('mouseup', saveStickersToFirebase);
+            div.addEventListener('touchend', saveStickersToFirebase);
+
+            // --- [PC 마우스 드래그 핸들러] ---
             div.addEventListener('mousedown', function(e) {
                 if (isLocked) return;
                 const rect = div.getBoundingClientRect();
+                // resize 핸들 영역(우측 하단 끝자락)을 건드릴 때는 드래그 작동하지 않게 컷
                 if (e.clientX > rect.right - 25 && e.clientY > rect.bottom - 25) return; 
                 
                 activeSticker = div;
-                offsetX = e.clientX - div.offsetLeft; offsetY = e.clientY - div.offsetTop;
+                offsetX = e.clientX - div.offsetLeft; 
+                offsetY = e.clientY - div.offsetTop;
                 div.style.zIndex = 40;
             });
 
-            // --- [모바일 터치 시작] ---
+            // --- [모바일 터치 드래그 핸들러] ---
             div.addEventListener('touchstart', function(e) {
                 if (isLocked) return;
                 const touch = e.touches[0];
@@ -585,7 +680,7 @@
             stickerLayer.appendChild(div);
         }
 
-        // --- 마우스/터치 이동 처리 (상단 제한선 물리적 강제 적용) ---
+        // --- 전역 마우스/터치 이동 및 중단 처리 ---
         document.addEventListener('mousemove', function(e) {
             if (!activeSticker || isLocked) return;
             
@@ -602,7 +697,11 @@
         });
 
         document.addEventListener('mouseup', function() {
-            if (activeSticker) { activeSticker.style.zIndex = 30; activeSticker = null; }
+            if (activeSticker) { 
+                activeSticker.style.zIndex = 30; 
+                activeSticker = null; 
+                saveStickersToFirebase(); // 마우스 업 때 위치 최종 갱신
+            }
         });
 
         document.addEventListener('touchmove', function(e) {
@@ -623,11 +722,14 @@
         }, { passive: false });
 
         document.addEventListener('touchend', function() {
-            if (activeSticker) { activeSticker.style.zIndex = 30; activeSticker = null; }
+            if (activeSticker) { 
+                activeSticker.style.zIndex = 30; 
+                activeSticker = null; 
+                saveStickersToFirebase(); // 터치 업 때 위치 최종 갱신
+            }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            // [방 이름 및 사용자 웰컴 타이틀 자동 세팅]
             const welcomeTitle = document.getElementById('welcome-title');
             if (welcomeTitle) {
                 welcomeTitle.innerText = `[${myRoom}] ${myName}님 환영해요`;
