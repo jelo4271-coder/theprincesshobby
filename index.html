@@ -935,13 +935,19 @@ stickerLayer.appendChild(div);
 
 
 document.addEventListener('mousemove', function(e) {
-
-if (!activeSticker || isLocked) return;
-
-activeSticker.style.left = (e.clientX - offsetX) + 'px';
-
-activeSticker.style.top = (e.clientY - offsetY) + 'px';
-
+    if (!activeSticker || isLocked) return;
+    
+    // 마우스 좌표에서 오프셋 계산
+    let newX = e.clientX - offsetX;
+    let newY = e.clientY - offsetY;
+    
+    // 헤더/탭 영역 높이(약 180px)보다 위로 올라가지 않게 제한
+    if (newY < 180) {
+        newY = 180;
+    }
+    
+    activeSticker.style.left = newX + 'px';
+    activeSticker.style.top = newY + 'px';
 });
 
 
