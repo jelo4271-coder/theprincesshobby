@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>난 공주고 이건 취미다 (Shared)</title>
+    <!-- CSS는 동일하니 생략 (이전 코드의 <style>~</style> 내용을 그대로 쓰면 돼!) -->
+    <!-- 아래에 CSS를 포함해뒀으니 그대로 복사해서 쓰면 돼! -->
+    <style>
+        /* [이전과 동일한 CSS를 그대로 사용해!] */
+        :root { --primary: #4f46e5; --primary-light: #e0e7ff; --bg: #f8fafc; --text: #1e293b; --card-bg: #ffffff; --border: #e2e8f0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 20px; min-height: 100vh; }
+        header { max-width: 1200px; margin: 0 auto 15px auto; display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 15px 25px; border-radius: 16px; }
+        h1 { font-size: 1.4rem; color: var(--primary); font-weight: 800; }
+        .calendar-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 15px; }
+        .day-card { background: var(--card-bg); border-radius: 14px; padding: 15px; min-height: 220px; border: 1px solid var(--border); }
+        .todo-list { list-style: none; }
+        .todo-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 6px; background: #f1f5f9; border-radius: 6px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 16px; }
+        .modal-input { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; }
+        .btn-ok { background: var(--primary); color: white; padding: 10px; border: none; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>난 공주고 이건 취미다</h1>
+        <div id="room-info" style="font-weight: bold; color: #4f46e5;">방: 로딩 중...</div>
+    </header>
+
+    <div class="calendar-grid" id="calendar"></div>
+
+    <!-- 방 입장 팝업 -->
+    <div class="modal-overlay" id="room-modal">
+        <div class="modal-box">
+            <div class="modal-title">입장할 방 번호(이름)를 입력하라긔!</div>
+            <input type="text" class="modal-input" id="room-input" placeholder="예: MyRoom123">
+            <button class="btn-ok" onclick="joinRoom()">입장하기</button>
+        </div>
+    </div>
+
+    <!-- 기존 팝업 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title" id="modal-title"></div>
+            <input type="text" class="modal-input" id="modal-input">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-ok" id="modal-ok">완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAI_DvCJfHGDaDSApdy6IUmrEoapOPnTHc",
+            authDomain: "miracle-of-100day.firebaseapp.com",
+            projectId: "miracle-of-100day",
+            storageBucket: "miracle-of-100day.firebasestorage.app",
+            messagingSenderId: "595101117042",
+            appId: "1:595101117042:web:415de9eca28be0d1e4f0eb",
+            measurementId: "G-1PXC7FENDC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let roomId = localStorage.getItem('study_room_id');
+        let todos = {};
+
+        // 방 입장 처리
+        window.joinRoom = async () => {
+            const input = document.getElementById('room-input').value.trim();
+            if(!input) return alert("방 이름을 적으라긔!");
+            localStorage.setItem('study_room_id', input);
+            location.reload();
+        }
+
+        if(!roomId) {
+            document.getElementById('room-modal').classList.add('active');
+        } else {
+            document.getElementById('room-info').innerText = `방: ${roomId}`;
+            // 실시간 데이터 동기화
+            onSnapshot(doc(db, "rooms", roomId), (doc) => {
+                if (doc.exists()) {
+                    todos = doc.data().todos || {};
+                } else {
+                    todos = {};
+                }
+                renderCalendar();
+            });
+        }
+
+        async function saveData() {
+            await setDoc(doc(db, "rooms", roomId), { todos: todos });
+        }
+
+        // 캘린더 렌더링 함수 수정 (기존 logic 유지하되 saveData 호출 추가)
+        function renderCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendarEl.innerHTML = '';
+            // ... (기존 renderCalendar 로직을 여기에 넣으면 돼!)
+            // 중요한 건, 투두 추가/삭제/완료 할 때마다 saveData()를 호출하는 거야.
+        }
+
+        // 할 일 추가 함수 예시
+        window.addTodo = async (dayKey) => {
+            if(!todos[dayKey]) todos[dayKey] = [];
+            const text = prompt("목표를 적으라긔!"); // 모달로 대체 가능
+            if(text) {
+                todos[dayKey].push({ text, completed: false });
+                await saveData();
+            }
+        }
+    </script>
+</body>
+</html>
