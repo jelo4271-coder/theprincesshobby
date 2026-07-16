@@ -27,6 +27,11 @@
         const myName = localStorage.getItem('myName') || prompt("본인의 이름을 입력하세요") || "익명";
         localStorage.setItem('studyRoom', myRoom);
         localStorage.setItem('myName', myName);
+
+        // [수정] 페이지가 다 로드된 후 제목 변경
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('welcome-title').innerText = `[{myRoom}] {myName}님 환영해요`;
+        });
     </script>
 
     <style>
@@ -145,11 +150,13 @@
 <body>
 
     <header>
-        <h1>[${myRoom}] ${myName}님 환영해요</h1>
+        <h1 id="welcome-title">환영합니다</h1>
         <div class="controls">
             <label for="sticker-input" class="file-label">스티커 추가</label>
             <input type="file" id="sticker-input" accept="image/*">
             <button id="lock-btn" class="btn-lock" onclick="toggleStickerLock()">스티커 편집</button>
+            <!-- 방 변경 버튼 -->
+            <button onclick="changeRoom()" style="background: #64748b; border:none; padding:10px 16px; border-radius:10px; cursor:pointer; color:white; font-weight:600; font-size:0.9rem;">방 변경</button>
         </div>
     </header>
 
@@ -452,7 +459,7 @@
             div.addEventListener('dblclick', async function() {
                 if (!isLocked) {
                     const ok = await openModal({ title: '스티커 삭제', desc: '이 스티커를 정말 삭제할거긔?', isConfirm: true, confirmText: '그렇긔' });
-                    if (오케이) div.remove();
+                    if (ok) div.remove();
                 }
             });
             div.addEventListener('mousedown', function(e) {
