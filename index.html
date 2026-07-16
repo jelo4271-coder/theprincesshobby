@@ -21,16 +21,17 @@
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+
+        // [방/이름 설정]
+        const myRoom = localStorage.getItem('studyRoom') || prompt("공유할 방 이름을 입력하세요 (친구와 같은 이름을 입력하세요)") || "default_room";
+        const myName = localStorage.getItem('myName') || prompt("본인의 이름을 입력하세요") || "익명";
+        localStorage.setItem('studyRoom', myRoom);
+        localStorage.setItem('myName', myName);
     </script>
 
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-light: #e0e7ff;
-            --bg: #f8fafc;
-            --text: #1e293b;
-            --card-bg: #ffffff;
-            --border: #e2e8f0;
+            --primary: #4f46e5; --primary-light: #e0e7ff; --bg: #f8fafc; --text: #1e293b; --card-bg: #ffffff; --border: #e2e8f0;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; }
@@ -54,6 +55,11 @@
         .btn-lock { background: #10b981; }
         .btn-lock.locked { background: #ef4444; }
         #sticker-input { display: none; }
+
+        /* [필터 탭 스타일] */
+        .view-tabs { max-width: 1200px; margin: 0 auto 15px auto; display: flex; gap: 8px; justify-content: center; }
+        .view-btn { background: #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: none; }
+        .view-btn.active { background: var(--primary); color: white; }
 
         .week-tabs {
             max-width: 1200px; margin: 0 auto 20px auto; display: flex; gap: 6px;
@@ -79,7 +85,6 @@
             border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             transition: 0.2s; position: relative; z-index: 10;
         }
-        .day-card:hover { border-color: var(--primary-light); }
         .day-header { font-weight: bold; margin-bottom: 10px; color: #64748b; font-size: 0.9rem; display: flex; justify-content: space-between; }
         .day-title { color: var(--primary); font-weight: 800; font-size: 1.05rem; }
         .day-date { font-size: 0.8rem; color: #94a3b8; }
@@ -140,13 +145,20 @@
 <body>
 
     <header>
-        <h1>난 공주고 이건 취미다</h1>
+        <h1>[${myRoom}] ${myName}님 환영해요</h1>
         <div class="controls">
             <label for="sticker-input" class="file-label">스티커 추가</label>
             <input type="file" id="sticker-input" accept="image/*">
             <button id="lock-btn" class="btn-lock" onclick="toggleStickerLock()">스티커 편집</button>
         </div>
     </header>
+
+    <!-- [필터 탭 추가] -->
+    <div class="view-tabs">
+        <button class="view-btn active" onclick="changeView('all', this)">모두 보기</button>
+        <button class="view-btn" onclick="changeView('me', this)">내 할 일</button>
+        <button class="view-btn" onclick="changeView('friend', this)">친구 할 일</button>
+    </div>
 
     <div class="week-tabs" id="week-tabs"></div>
     <div class="calendar-grid" id="calendar"></div>
@@ -192,10 +204,11 @@
 
     <script>
         // --- 데이터 관리 (Firebase) ---
-        let todos = {}; // 처음에 빈 객체로 시작
+        let todos = {};
+        let currentView = 'all'; // [필터 상태]
         
-        // 데이터 불러오기
-        database.ref('todos').on('value', (snapshot) => {
+        // 데이터 불러오기 (방 이름에 따라 경로 분리)
+        database.ref('todos/' + myRoom).on('value', (snapshot) => {
             todos = snapshot.val() || {};
             renderTabs();
             renderCalendar();
@@ -203,7 +216,15 @@
 
         // 데이터 저장하기
         function saveToFirebase() {
-            database.ref('todos').set(todos);
+            database.ref('todos/' + myRoom).set(todos);
+        }
+
+        // [필터 변경 함수]
+        function changeView(view, btn) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderCalendar();
         }
 
         // --- 커스텀 팝업창(모달) 컨트롤러 ---
@@ -254,14 +275,8 @@
                     resolve(isConfirm ? false : null);
                 };
                 window.onkeydown = (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        btnOk.click();
-                    }
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        btnCancel.click();
-                    }
+                    if (e.key === 'Enter') { e.preventDefault(); btnOk.click(); }
+                    if (e.key === 'Escape') { e.preventDefault(); btnCancel.click(); }
                 };
             });
         }
@@ -307,7 +322,18 @@
                 const dayKey = `day_${dayNum}`;
                 if (!todos[dayKey]) todos[dayKey] = [];
 
-                todos[dayKey].forEach(todo => {
+                // 필터링 적용된 카운트 계산
+                let dayTodos = todos[dayKey];
+                
+                // [필터링 적용]
+                let displayTodos = dayTodos.filter(todo => {
+                    if (currentView === 'me') return todo.author === myName;
+                    if (currentView === 'friend') return todo.author !== myName;
+                    return true;
+                });
+
+                // 통계용 전체 카운트
+                dayTodos.forEach(todo => {
                     totalCount++;
                     if (todo.completed) completedCount++;
                 });
@@ -322,7 +348,7 @@
                             <span class="day-title">${dDayStr}</span>
                             <span class="day-date">(${dateStr})</span>
                         </div>
-                        <span>${todos[dayKey].length}개</span>
+                        <span>${displayTodos.length}개</span>
                     </div>
                     <ul class="todo-list" id="list-${dayKey}"></ul>
                     <button class="btn-add-todo" onclick="addTodo('${dayKey}')">+ 할 일 추가</button>
@@ -330,12 +356,20 @@
                 calendarEl.appendChild(card);
 
                 const listEl = card.querySelector(`#list-${dayKey}`);
-                todos[dayKey].forEach((todo, index) => {
+                displayTodos.forEach((todo, index) => {
+                    // 원본 인덱스 찾기 (filter된 인덱스가 아님)
+                    const originalIndex = todos[dayKey].indexOf(todo);
+                    
                     const li = document.createElement('li');
                     li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                    // 색상 구분
+                    const authorColor = todo.author === myName ? '#4f46e5' : '#c026d3';
+                    
                     li.innerHTML = `
-                        <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodo('${dayKey}', ${index})">
-                        <span class="todo-text" onclick="editTodo('${dayKey}', ${index})" title="클릭하여 수정/삭제">${todo.text}</span>
+                        <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodo('${dayKey}', ${originalIndex})">
+                        <span class="todo-text" onclick="editTodo('${dayKey}', ${originalIndex})" title="클릭하여 수정/삭제">
+                            <span style="font-size:0.75rem; font-weight:700; color:${authorColor};">[${todo.author}]</span> ${todo.text}
+                        </span>
                     `;
                     listEl.appendChild(li);
                 });
@@ -349,7 +383,7 @@
                 desc: '오늘 꼭 완수하라긔!'
             });
             if (text && text.trim()) {
-                todos[dayKey].push({ text: text.trim(), completed: false });
+                todos[dayKey].push({ text: text.trim(), completed: false, author: myName });
                 saveToFirebase();
                 renderCalendar();
             }
@@ -362,6 +396,9 @@
         }
 
         async function editTodo(dayKey, index) {
+            // 본인 것만 수정 가능하게 설정
+            if (todos[dayKey][index].author !== myName) return alert("자기가 쓴 것만 수정/삭제 가능하긔!");
+
             const currentText = todos[dayKey][index].text;
             const newText = await openModal({
                 title: '할 일 수정하라긔',
@@ -386,7 +423,7 @@
             document.getElementById('progress-fill').style.width = `${percent}%`;
         }
 
-        // --- 2. 스티커 (다꾸 & 잠금) 로직 ---
+        // --- 2. 스티커 / 타이머 (기존 로직 유지) ---
         const stickerLayer = document.getElementById('sticker-layer');
         const lockBtn = document.getElementById('lock-btn');
         let isLocked = false;
@@ -395,58 +432,37 @@
 
         function toggleStickerLock() {
             isLocked = !isLocked;
-            if (isLocked) {
-                stickerLayer.classList.add('locked');
-                lockBtn.classList.add('locked');
-                lockBtn.innerHTML = '스티커 잠금';
-            } else {
-                stickerLayer.classList.remove('locked');
-                lockBtn.classList.remove('locked');
-                lockBtn.innerHTML = '스티커 편집';
-            }
+            if (isLocked) { stickerLayer.classList.add('locked'); lockBtn.classList.add('locked'); lockBtn.innerHTML = '스티커 잠금'; }
+            else { stickerLayer.classList.remove('locked'); lockBtn.classList.remove('locked'); lockBtn.innerHTML = '스티커 편집'; }
         }
 
         document.getElementById('sticker-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            reader.onload = function(event) {
-                createSticker(event.target.result, 150, 150);
-            };
+            reader.onload = function(event) { createSticker(event.target.result, 150, 150); };
             reader.readAsDataURL(file);
         });
 
         function createSticker(src, left, top) {
             const div = document.createElement('div');
             div.className = 'sticker';
-            div.style.left = left + 'px';
-            div.style.top = top + 'px';
+            div.style.left = left + 'px'; div.style.top = top + 'px';
             div.innerHTML = `<img src="${src}" alt="sticker">`;
-            
             div.addEventListener('dblclick', async function() {
                 if (!isLocked) {
-                    const ok = await openModal({
-                        title: '스티커 삭제',
-                        desc: '이 스티커를 정말 삭제할거긔?',
-                        isConfirm: true,
-                        confirmText: '그렇긔'
-                    });
+                    const ok = await openModal({ title: '스티커 삭제', desc: '이 스티커를 정말 삭제할거긔?', isConfirm: true, confirmText: '그렇긔' });
                     if (ok) div.remove();
                 }
             });
-
             div.addEventListener('mousedown', function(e) {
                 if (isLocked) return;
                 const rect = div.getBoundingClientRect();
                 if (e.clientX > rect.right - 25 && e.clientY > rect.bottom - 25) return;
-
                 activeSticker = div;
-                offsetX = e.clientX - div.offsetLeft;
-                offsetY = e.clientY - div.offsetTop;
+                offsetX = e.clientX - div.offsetLeft; offsetY = e.clientY - div.offsetTop;
                 div.style.zIndex = 40;
             });
-
             stickerLayer.appendChild(div);
         }
 
@@ -457,66 +473,29 @@
         });
 
         document.addEventListener('mouseup', function() {
-            if (activeSticker) {
-                activeSticker.style.zIndex = 30;
-                activeSticker = null;
-            }
+            if (activeSticker) { activeSticker.style.zIndex = 30; activeSticker = null; }
         });
 
-        // --- 3. 시한폭탄(카운트다운 타이머) 로직 ---
         let timerInterval;
         let totalSeconds = 0;
-
         function updateTimerDisplay() {
             const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
             const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
             const s = String(totalSeconds % 60).padStart(2, '0');
             document.getElementById('timer').innerText = `${h}:${m}:${s}`;
         }
-
-        function addTime(seconds) {
-            totalSeconds += seconds;
-            updateTimerDisplay();
-        }
-
+        function addTime(seconds) { totalSeconds += seconds; updateTimerDisplay(); }
         async function startTimer() {
-            if (totalSeconds <= 0) {
-                await openModal({
-                    title: '⚠️ 폭탄 시간 설정',
-                    desc: '+10분, +30분, +50분 버튼을 눌러 시간을 먼저 설정하라긔!',
-                    isConfirm: true,
-                    confirmText: '알겠긔'
-                });
-                return;
-            }
+            if (totalSeconds <= 0) { await openModal({ title: '⚠️ 폭탄 시간 설정', desc: '+10분, +30분, +50분 버튼을 눌러 시간을 먼저 설정하라긔!', isConfirm: true, confirmText: '알겠긔' }); return; }
             if (!timerInterval) {
                 timerInterval = setInterval(() => {
-                    if (totalSeconds > 0) {
-                        totalSeconds--;
-                        updateTimerDisplay();
-                    } else {
-                        pauseTimer();
-                        openModal({
-                            title: '💥 펑! 시한폭탄 종료!',
-                            desc: '설정한 시간이 끝났긔! 집중 끝내거나 쉬는 시간 가지라긔!',
-                            isConfirm: true,
-                            confirmText: '확인했긔'
-                        });
-                    }
+                    if (totalSeconds > 0) { totalSeconds--; updateTimerDisplay(); }
+                    else { pauseTimer(); openModal({ title: '💥 펑! 시한폭탄 종료!', desc: '설정한 시간이 끝났긔! 집중 끝내거나 쉬는 시간 가지라긔!', isConfirm: true, confirmText: '확인했긔' }); }
                 }, 1000);
             }
         }
-
-        function pauseTimer() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-
-        function resetTimer() {
-            pauseTimer();
-            totalSeconds = 0;
-            updateTimerDisplay();
-        }
+        function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
+        function resetTimer() { pauseTimer(); totalSeconds = 0; updateTimerDisplay(); }
     </script>
 </body>
 </html>
