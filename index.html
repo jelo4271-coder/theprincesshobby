@@ -27,6 +27,11 @@
         const myName = localStorage.getItem('myName') || prompt("본인의 이름을 입력하세요") || "익명";
         localStorage.setItem('studyRoom', myRoom);
         localStorage.setItem('myName', myName);
+
+        // [수정] 페이지가 다 로드된 후 제목 변경
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('welcome-title').innerText = `[${myRoom}] ${myName}님 환영해요`;
+        });
     </script>
 
     <style>
@@ -145,7 +150,7 @@
 <body>
 
     <header>
-        <h1>[${myRoom}] ${myName}님 환영해요</h1>
+        <h1 id="welcome-title">환영합니다</h1>
         <div class="controls">
             <label for="sticker-input" class="file-label">스티커 추가</label>
             <input type="file" id="sticker-input" accept="image/*">
