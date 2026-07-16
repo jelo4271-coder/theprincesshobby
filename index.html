@@ -149,12 +149,14 @@
 </head>
 <body>
 
-    <header>
+   <header>
         <h1 id="welcome-title">환영합니다</h1>
         <div class="controls">
             <label for="sticker-input" class="file-label">스티커 추가</label>
             <input type="file" id="sticker-input" accept="image/*">
             <button id="lock-btn" class="btn-lock" onclick="toggleStickerLock()">스티커 편집</button>
+            <!-- 방 변경 버튼 -->
+            <button onclick="changeRoom()" style="background: #64748b; border:none; padding:10px 16px; border-radius:10px; cursor:pointer; color:white; font-weight:600; font-size:0.9rem;">방 변경</button>
         </div>
     </header>
 
