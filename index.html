@@ -8,31 +8,6 @@
     <!-- [1. Firebase SDK] -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAI_DvCJfHGDaDSApdy6IUmrEoapOPnTHc",
-            authDomain: "miracle-of-100day.firebaseapp.com",
-            databaseURL: "https://miracle-of-100day-default-rtdb.firebaseio.com",
-            projectId: "miracle-of-100day",
-            storageBucket: "miracle-of-100day.firebasestorage.app",
-            messagingSenderId: "595101117042",
-            appId: "1:595101117042:web:ef6fbaa9ba1d4a6fe4f0eb",
-            measurementId: "G-TH0ETTEKW3"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // [방/이름 설정]
-        const myRoom = localStorage.getItem('studyRoom') || prompt("공유할 방 이름을 입력하세요 (친구와 같은 이름을 입력하세요)") || "default_room";
-        const myName = localStorage.getItem('myName') || prompt("본인의 이름을 입력하세요") || "익명";
-        localStorage.setItem('studyRoom', myRoom);
-        localStorage.setItem('myName', myName);
-
-        // [수정] 페이지가 다 로드된 후 제목 변경
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('welcome-title').innerText = `[{myRoom}] {myName}님 환영해요`;
-        });
-    </script>
 
     <style>
         :root {
@@ -104,7 +79,7 @@
         .todo-item.completed .todo-text { text-decoration: line-through; color: #94a3b8; }
         .btn-add-todo {
             background: transparent; color: #64748b; border: 1px dashed #cbd5e1;
-            width: 100%; padding: 8px; margin-top: 10px; border-radius: 6px; font-size: 0.8rem; z-index: 10; cursor: pointer;
+            width: 100%; padding: 8px; margin-top: 10px; border-radius: 6px; font-size: 0.8rem; z-index: 1; cursor: pointer;
         }
         .btn-add-todo:hover { background: #f8fafc; color: var(--primary); border-color: var(--primary); }
 
@@ -117,8 +92,35 @@
         .progress-bar-bg { width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #818cf8); width: 0%; transition: width 0.4s ease; }
 
-        #sticker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; overflow: hidden; }
-        .sticker { position: absolute; display: inline-block; cursor: grab; padding: 5px; border: 1px dashed rgba(0,0,0,0.4); background: rgba(255,255,255,0.2); resize: both; overflow: hidden; min-width: 50px; min-height: 50px; width: 120px; height: 120px; pointer-events: auto; }
+        /* [수정] 스티커 레이어 순서 조정: 달력(10) 보단 위, 헤더(50) 보단 아래 */
+        #sticker-layer { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 20;
+            pointer-events: none; 
+            overflow: hidden; 
+        }
+        /* [수정] 스티커 최대 가로/세로 높이 제한 추가 */
+        .sticker { 
+            position: absolute; 
+            display: inline-block; 
+            cursor: grab; 
+            padding: 5px; 
+            border: 1px dashed rgba(0,0,0,0.4); 
+            background: rgba(255,255,255,0.2); 
+            resize: both; 
+            overflow: hidden; 
+            min-width: 50px; 
+            min-height: 50px; 
+            width: 120px; 
+            height: 120px; 
+            max-width: 300px; /* 최대 너비 제한 */
+            max-height: 300px; /* 최대 높이 제한 */
+            pointer-events: auto; 
+        }
         #sticker-layer.locked .sticker { border: none !important; background: transparent !important; resize: none !important; cursor: default !important; pointer-events: none !important; }
         .sticker img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 
@@ -210,7 +212,34 @@
     </div>
 
     <script>
-        // --- 데이터 관리 (Firebase) ---
+        // --- [수정] 1. Firebase 초기화 및 변수 선언 순서 조정 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAI_DvCJfHGDaDSApdy6IUmrEoapOPnTHc",
+            authDomain: "miracle-of-100day.firebaseapp.com",
+            databaseURL: "https://miracle-of-100day-default-rtdb.firebaseio.com",
+            projectId: "miracle-of-100day",
+            storageBucket: "miracle-of-100day.firebasestorage.app",
+            messagingSenderId: "595101117042",
+            appId: "1:595101117042:web:ef6fbaa9ba1d4a6fe4f0eb",
+            measurementId: "G-TH0ETTEKW3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // --- [수정] 2. 로컬 스토리지 초기화 설정 ---
+        const myRoom = localStorage.getItem('studyRoom') || prompt("공유할 방 이름을 입력하세요") || "default_room";
+        const myName = localStorage.getItem('myName') || prompt("본인의 이름을 입력하세요") || "익명";
+        localStorage.setItem('studyRoom', myRoom);
+        localStorage.setItem('myName', myName);
+
+        // --- [수정] 3. 방 변경 함수를 전역에 가장 먼저 배치 (클릭 오류 완전 해결) ---
+        function changeRoom() {
+            localStorage.removeItem('studyRoom');
+            localStorage.removeItem('myName');
+            location.reload();
+        }
+
         let todos = {};
         let currentView = 'all'; // [필터 상태]
         
@@ -430,7 +459,7 @@
             document.getElementById('progress-fill').style.width = `${percent}%`;
         }
 
-        // --- 2. 스티커 / 타이머 (기존 로직 유지) ---
+        // --- 2. 스티커 / 타이머 ---
         const stickerLayer = document.getElementById('sticker-layer');
         const lockBtn = document.getElementById('lock-btn');
         let isLocked = false;
@@ -503,6 +532,14 @@
         }
         function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
         function resetTimer() { pauseTimer(); totalSeconds = 0; updateTimerDisplay(); }
+
+        // --- [수정] 4. DOM 완료 후 방 이름/이름 반영 처리 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const welcomeTitle = document.getElementById('welcome-title');
+            if (welcomeTitle) {
+                welcomeTitle.innerText = `[${myRoom}] ${myName}님 환영해요`;
+            }
+        });
     </script>
 </body>
 </html>
