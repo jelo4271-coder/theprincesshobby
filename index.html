@@ -177,8 +177,8 @@
     <header>
         <h1 id="welcome-title">공부 기록방</h1>
         <div style="font-size: 0.9rem; font-weight: 700; color: #475569; display: flex; gap: 12px;">
-            <span>🏠 방: <strong id="room-display" style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="editRoomName()">로딩중</strong></span>
-            <span>👤 내이름: <strong id="name-display" style="color: #c026d3; cursor: pointer; text-decoration: underline;" onclick="editMyName()">로딩중</strong></span>
+            <span>방: <strong id="room-display" style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="editRoomName()">로딩중</strong></span>
+            <span>내이름: <strong id="name-display" style="color: #c026d3; cursor: pointer; text-decoration: underline;" onclick="editMyName()">로딩중</strong></span>
         </div>
         <div class="controls">
             <label for="sticker-input" class="file-label">스티커 추가</label>
@@ -215,7 +215,7 @@
         <div class="modal-box">
             <div class="modal-title" id="modal-title">입력창</div>
             <div class="modal-desc" id="modal-desc" style="display: none;"></div>
-            <input type="text" class="modal-input" id="modal-input" placeholder="여기에 적으라긔" autocomplete="off">
+            <input type="text" class="modal-input" id="modal-input" placeholder="여기에 입력" autocomplete="off">
             <div class="modal-buttons">
                 <button class="btn-cancel" id="modal-cancel">취소 (ESC)</button>
                 <button class="btn-ok" id="modal-ok">완료 (Enter)</button>
@@ -307,8 +307,8 @@
 
         async function editRoomName() {
             const newRoom = await openModal({
-                title: '🏠 공부방 이름 변경',
-                desc: '동일한 방 이름을 입력한 친구끼리 목표가 실시간 동기화되긔!',
+                title: '공부방 변경',
+                desc: '동일한 방 이름을 입력한 친구끼리 목표가 실시간 동기화됩니다.',
                 defaultValue: myRoom
             });
             if (newRoom && newRoom.trim() && newRoom.trim() !== myRoom) {
@@ -319,8 +319,8 @@
 
         async function editMyName() {
             const newName = await openModal({
-                title: '👤 닉네임 변경',
-                desc: '할 일 작성자 이름으로 표시될 닉네임을 적어주세요.',
+                title: '닉네임 변경',
+                desc: '작성자로 표시될 닉네임을 적어주세요.',
                 defaultValue: myName
             });
             if (newName && newName.trim() && newName.trim() !== myName) {
@@ -442,7 +442,7 @@
         async function addTodo(dayKey) {
             const text = await openModal({
                 title: '추가할 공부 목표 입력',
-                desc: '오늘 꼭 완수하라긔!'
+                desc: '화이팅!'
             });
             if (text && text.trim()) {
                 todos[dayKey].push({ text: text.trim(), completed: false, author: myName });
@@ -459,13 +459,13 @@
 
         async function editTodo(dayKey, index) {
             if (todos[dayKey][index].author !== myName) {
-                alert("자기가 쓴 것만 수정/삭제 가능하긔!");
+                alert("자신이 쓴 할 일만 수정 가능합니다.");
                 return;
             }
 
             const currentText = todos[dayKey][index].text;
             const newText = await openModal({
-                title: '할 일 수정하라긔',
+                title: '할 일 수정',
                 desc: '내용을 모두 지우고 완료를 누르면 항목이 삭제됩니다.',
                 defaultValue: currentText
             });
