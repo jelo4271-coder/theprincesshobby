@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>난 공주고 수능은 취미다</title>
 
     <!-- [1. Firebase SDK] -->
@@ -24,7 +24,7 @@
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); z-index: 50; position: relative;
         }
         h1 { font-size: 1.4rem; color: var(--primary); font-weight: 800; }
-        .controls { display: flex; gap: 10px; align-items: center; z-index: 50; }
+        .controls { display: flex; gap: 15px; align-items: center; z-index: 50; }
         
         button, .file-label {
             background: var(--primary); color: white; border: none; padding: 10px 16px;
@@ -37,7 +37,7 @@
         #sticker-input { display: none; }
 
         /* [필터 탭 스타일] */
-        .view-tabs { max-width: 1200px; margin: 0 auto 15px auto; display: flex; gap: 8px; justify-content: center; }
+        .view-tabs { max-width: 1200px; margin: 0 auto 15px auto; display: flex; gap: 8px; justify-content: center; z-index: 50; position: relative; }
         .view-btn { background: #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: none; }
         .view-btn.active { background: var(--primary); color: white; }
 
@@ -92,49 +92,72 @@
         .progress-bar-bg { width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden; }
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #818cf8); width: 0%; transition: width 0.4s ease; }
 
-        /* [수정] 스티커 레이어 순서 조정: 달력(10) 보단 위, 헤더(50) 보단 아래 */
+        /* [스티커 레이어] */
         #sticker-layer { 
             position: absolute; 
             top: 0; 
             left: 0; 
             width: 100%; 
             height: 100%; 
-            z-index: 20;
-            pointer-events: none; 
+            z-index: 20; /* 캘린더보단 위, 헤더/주차탭보단 아래 */
+            pointer-events: none; /* 잠금 상태일 때 뒤쪽 요소 터치 완전 방해 안 함 */
             overflow: hidden; 
         }
-        /* [수정] 스티커 최대 가로/세로 높이 제한 추가 */
+        
         .sticker { 
             position: absolute; 
             display: inline-block; 
             cursor: grab; 
             padding: 5px; 
-            border: 1px dashed rgba(0,0,0,0.4); 
-            background: rgba(255,255,255,0.2); 
+            border: 2px dashed rgba(79, 70, 229, 0.5); 
+            background: rgba(255,255,255,0.4); 
             resize: both; 
-            overflow: hidden; 
+            overflow: visible; 
             min-width: 50px; 
             min-height: 50px; 
             width: 120px; 
             height: 120px; 
-            max-width: 300px; /* 최대 너비 제한 */
-            max-height: 300px; /* 최대 높이 제한 */
-            pointer-events: auto; 
+            max-width: 300px; 
+            max-height: 300px; 
+            pointer-events: auto; /* 편집 모드일 때 터치 가능 */
+            touch-action: none; 
         }
-        #sticker-layer.locked .sticker { border: none !important; background: transparent !important; resize: none !important; cursor: default !important; pointer-events: none !important; }
+        
+        /* 잠금 상태일 때 스티커 자체의 편집선 제거 및 완전 비활성화 */
+        #sticker-layer.locked .sticker { 
+            border: none !important; 
+            background: transparent !important; 
+            resize: none !important; 
+            cursor: default !important; 
+            pointer-events: none !important; 
+        }
+        
         .sticker img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 
-        .timer-widget { position: fixed; bottom: 30px; right: 30px; background: #1e293b; color: white; padding: 16px 18px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 180px; border: 2px solid #ef4444; }
-        .timer-title { font-size: 0.85rem; color: #f87171; font-weight: 800; display: flex; align-items: center; gap: 4px; }
-        .timer-display { font-size: 1.6rem; font-weight: bold; font-variant-numeric: tabular-nums; color: #ffffff; }
-        .timer-presets { display: flex; gap: 4px; width: 100%; justify-content: center; }
-        .timer-presets button { background: #334155; padding: 5px 6px; font-size: 0.75rem; border-radius: 6px; flex: 1; cursor: pointer; border: none; color: white;}
-        .timer-presets button:hover { background: #475569; }
-        .timer-controls { display: flex; gap: 5px; width: 100%; justify-content: center; }
-        .timer-controls button { padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; flex: 1; cursor: pointer; border: none; color: white;}
-        .btn-start { background: #ef4444; font-weight: bold; }
-        .btn-pause { background: #f59e0b; }
-        .btn-reset { background: #64748b; }
+        /* [우측 상단 삭제 빨간 X 버튼] */
+        .btn-delete-sticker {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        #sticker-layer.locked .btn-delete-sticker {
+            display: none !important;
+        }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(3px); z-index: 1000; display: none; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.2s ease; }
         .modal-overlay.active { display: flex; opacity: 1; }
@@ -152,18 +175,20 @@
 <body>
 
     <header>
-        <h1 id="welcome-title">환영합니다</h1>
+        <h1 id="welcome-title">공부 기록방</h1>
+        <div style="font-size: 0.9rem; font-weight: 700; color: #475569; display: flex; gap: 12px;">
+            <span>🏠 방: <strong id="room-display" style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="editRoomName()">로딩중</strong></span>
+            <span>👤 내이름: <strong id="name-display" style="color: #c026d3; cursor: pointer; text-decoration: underline;" onclick="editMyName()">로딩중</strong></span>
+        </div>
         <div class="controls">
             <label for="sticker-input" class="file-label">스티커 추가</label>
             <input type="file" id="sticker-input" accept="image/*">
             <button id="lock-btn" class="btn-lock" onclick="toggleStickerLock()">스티커 편집</button>
-            <!-- 방 변경 버튼 -->
-            <button onclick="changeRoom()" style="background: #64748b; border:none; padding:10px 16px; border-radius:10px; cursor:pointer; color:white; font-weight:600; font-size:0.9rem;">방 변경</button>
         </div>
     </header>
 
-    <!-- [필터 탭 추가] -->
-    <div class="view-tabs">
+    <!-- [필터 탭] -->
+    <div class="view-tabs" id="view-tabs">
         <button class="view-btn active" onclick="changeView('all', this)">모두 보기</button>
         <button class="view-btn" onclick="changeView('me', this)">내 할 일</button>
         <button class="view-btn" onclick="changeView('friend', this)">친구 할 일</button>
@@ -182,28 +207,15 @@
         </div>
     </div>
 
+    <!-- 스티커 배치 레이어 -->
     <div id="sticker-layer"></div>
 
-    <div class="timer-widget">
-        <div class="timer-title">💣 시한폭탄</div>
-        <div class="timer-display" id="timer">00:00:00</div>
-        <div class="timer-presets">
-            <button onclick="addTime(600)">+10분</button>
-            <button onclick="addTime(1800)">+30분</button>
-            <button onclick="addTime(3000)">+50분</button>
-        </div>
-        <div class="timer-controls">
-            <button class="btn-start" onclick="startTimer()">시작</button>
-            <button class="btn-pause" onclick="pauseTimer()">정지</button>
-            <button class="btn-reset" onclick="resetTimer()">리셋</button>
-        </div>
-    </div>
-
+    <!-- [커스텀 모달 팝업] -->
     <div class="modal-overlay" id="modal-overlay">
         <div class="modal-box">
-            <div class="modal-title" id="modal-title">추가할 공부 목표 입력</div>
+            <div class="modal-title" id="modal-title">입력창</div>
             <div class="modal-desc" id="modal-desc" style="display: none;"></div>
-            <input type="text" class="modal-input" id="modal-input" placeholder="내용 적으라긔" autocomplete="off">
+            <input type="text" class="modal-input" id="modal-input" placeholder="여기에 적으라긔" autocomplete="off">
             <div class="modal-buttons">
                 <button class="btn-cancel" id="modal-cancel">취소 (ESC)</button>
                 <button class="btn-ok" id="modal-ok">완료 (Enter)</button>
@@ -212,7 +224,7 @@
     </div>
 
     <script>
-        // --- [수정] 1. Firebase 초기화 및 변수 선언 순서 조정 ---
+        // --- 1. Firebase 초기 설정 ---
         const firebaseConfig = {
             apiKey: "AIzaSyAI_DvCJfHGDaDSApdy6IUmrEoapOPnTHc",
             authDomain: "miracle-of-100day.firebaseapp.com",
@@ -227,43 +239,25 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // --- [수정] 2. 로컬 스토리지 초기화 설정 ---
-        const myRoom = localStorage.getItem('studyRoom') || prompt("공유할 방 이름을 입력하세요") || "default_room";
-        const myName = localStorage.getItem('myName') || prompt("본인의 이름을 입력하세요") || "익명";
+        let myRoom = localStorage.getItem('studyRoom') || "공주고방";
+        let myName = localStorage.getItem('myName') || "공주";
+        
         localStorage.setItem('studyRoom', myRoom);
         localStorage.setItem('myName', myName);
 
-        // --- [수정] 3. 방 변경 함수를 전역에 가장 먼저 배치 (클릭 오류 완전 해결) ---
-        function changeRoom() {
-            localStorage.removeItem('studyRoom');
-            localStorage.removeItem('myName');
-            location.reload();
-        }
+        document.getElementById('room-display').innerText = myRoom;
+        document.getElementById('name-display').innerText = myName;
 
         let todos = {};
-        let currentView = 'all'; // [필터 상태]
-        
-        // 데이터 불러오기 (방 이름에 따라 경로 분리)
-        database.ref('todos/' + myRoom).on('value', (snapshot) => {
-            todos = snapshot.val() || {};
-            renderTabs();
-            renderCalendar();
-        });
+        let currentView = 'all';
+        const startDate = new Date(2026, 6, 16); 
+        const totalDays = 126;
+        const totalWeeks = Math.ceil(totalDays / 7);
+        let currentWeek = 1;
 
-        // 데이터 저장하기
-        function saveToFirebase() {
-            database.ref('todos/' + myRoom).set(todos);
-        }
+        const calendarEl = document.getElementById('calendar');
+        const weekTabsEl = document.getElementById('week-tabs');
 
-        // [필터 변경 함수]
-        function changeView(view, btn) {
-            currentView = view;
-            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderCalendar();
-        }
-
-        // --- 커스텀 팝업창(모달) 컨트롤러 ---
         function openModal({ title, desc = '', defaultValue = '', isConfirm = false, confirmText = '' }) {
             return new Promise((resolve) => {
                 const overlay = document.getElementById('modal-overlay');
@@ -283,7 +277,7 @@
 
                 if (isConfirm) {
                     inputEl.style.display = 'none';
-                    btnOk.innerText = confirmText || '그렇긔';
+                    btnOk.innerText = confirmText || '확인';
                 } else {
                     inputEl.style.display = 'block';
                     inputEl.value = defaultValue;
@@ -302,14 +296,8 @@
                     window.onkeydown = null;
                 };
 
-                btnOk.onclick = () => {
-                    cleanup();
-                    resolve(isConfirm ? true : inputEl.value);
-                };
-                btnCancel.onclick = () => {
-                    cleanup();
-                    resolve(isConfirm ? false : null);
-                };
+                btnOk.onclick = () => { cleanup(); resolve(isConfirm ? true : inputEl.value); };
+                btnCancel.onclick = () => { cleanup(); resolve(isConfirm ? false : null); };
                 window.onkeydown = (e) => {
                     if (e.key === 'Enter') { e.preventDefault(); btnOk.click(); }
                     if (e.key === 'Escape') { e.preventDefault(); btnCancel.click(); }
@@ -317,14 +305,58 @@
             });
         }
 
-        // --- 1. 날짜 및 주차 계산 ---
-        const startDate = new Date(2026, 6, 16);
-        const totalDays = 126;
-        const totalWeeks = Math.ceil(totalDays / 7);
-        let currentWeek = 1;
+        async function editRoomName() {
+            const newRoom = await openModal({
+                title: '🏠 공부방 이름 변경',
+                desc: '동일한 방 이름을 입력한 친구끼리 목표가 실시간 동기화되긔!',
+                defaultValue: myRoom
+            });
+            if (newRoom && newRoom.trim() && newRoom.trim() !== myRoom) {
+                localStorage.setItem('studyRoom', newRoom.trim());
+                location.reload();
+            }
+        }
 
-        const calendarEl = document.getElementById('calendar');
-        const weekTabsEl = document.getElementById('week-tabs');
+        async function editMyName() {
+            const newName = await openModal({
+                title: '👤 닉네임 변경',
+                desc: '할 일 작성자 이름으로 표시될 닉네임을 적어주세요.',
+                defaultValue: myName
+            });
+            if (newName && newName.trim() && newName.trim() !== myName) {
+                localStorage.setItem('myName', newName.trim());
+                location.reload();
+            }
+        }
+
+        const cachedData = localStorage.getItem(`cache_todos_${myRoom}`);
+        if (cachedData) {
+            todos = JSON.parse(cachedData);
+            renderTabs();
+            renderCalendar();
+        }
+
+        database.ref('todos/' + myRoom).on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                todos = data;
+                localStorage.setItem(`cache_todos_${myRoom}`, JSON.stringify(todos));
+                renderTabs();
+                renderCalendar();
+            }
+        });
+
+        function saveToFirebase() {
+            database.ref('todos/' + myRoom).set(todos);
+            localStorage.setItem(`cache_todos_${myRoom}`, JSON.stringify(todos));
+        }
+
+        function changeView(view, btn) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderCalendar();
+        }
 
         function renderTabs() {
             weekTabsEl.innerHTML = `<button class="week-btn ${currentWeek === 'all' ? 'active' : ''}" onclick="changeWeek('all')">전체보기</button>`;
@@ -358,17 +390,14 @@
                 const dayKey = `day_${dayNum}`;
                 if (!todos[dayKey]) todos[dayKey] = [];
 
-                // 필터링 적용된 카운트 계산
                 let dayTodos = todos[dayKey];
                 
-                // [필터링 적용]
                 let displayTodos = dayTodos.filter(todo => {
                     if (currentView === 'me') return todo.author === myName;
                     if (currentView === 'friend') return todo.author !== myName;
                     return true;
                 });
 
-                // 통계용 전체 카운트
                 dayTodos.forEach(todo => {
                     totalCount++;
                     if (todo.completed) completedCount++;
@@ -392,13 +421,10 @@
                 calendarEl.appendChild(card);
 
                 const listEl = card.querySelector(`#list-${dayKey}`);
-                displayTodos.forEach((todo, index) => {
-                    // 원본 인덱스 찾기 (filter된 인덱스가 아님)
+                displayTodos.forEach((todo) => {
                     const originalIndex = todos[dayKey].indexOf(todo);
-                    
                     const li = document.createElement('li');
                     li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
-                    // 색상 구분
                     const authorColor = todo.author === myName ? '#4f46e5' : '#c026d3';
                     
                     li.innerHTML = `
@@ -432,8 +458,10 @@
         }
 
         async function editTodo(dayKey, index) {
-            // 본인 것만 수정 가능하게 설정
-            if (todos[dayKey][index].author !== myName) return alert("자기가 쓴 것만 수정/삭제 가능하긔!");
+            if (todos[dayKey][index].author !== myName) {
+                alert("자기가 쓴 것만 수정/삭제 가능하긔!");
+                return;
+            }
 
             const currentText = todos[dayKey][index].text;
             const newText = await openModal({
@@ -459,24 +487,64 @@
             document.getElementById('progress-fill').style.width = `${percent}%`;
         }
 
-        // --- 2. 스티커 / 타이머 ---
+        // --- 2. 스티커 기능 (동적 한계선 강제 제어 시스템) ---
         const stickerLayer = document.getElementById('sticker-layer');
         const lockBtn = document.getElementById('lock-btn');
-        let isLocked = false;
+        let isLocked = true; // 기본적으로 스티커 잠금 상태로 시작 (실수 터치 방지)
         let activeSticker = null;
         let offsetX = 0, offsetY = 0;
 
+        // 초기 잠금 상태 적용
+        stickerLayer.classList.add('locked');
+        lockBtn.classList.add('locked');
+        lockBtn.innerHTML = '스티커 잠금';
+
+        // [동적 상단 제한선 계산 함수]
+        // 주차 선택 탭(week-tabs)의 최하단 문서 기준 Y좌표를 정확하게 추적합니다.
+        function getUpperLimitY() {
+            const weekTabs = document.getElementById('week-tabs');
+            if (weekTabs) {
+                return weekTabs.getBoundingClientRect().bottom + window.pageYOffset + 5;
+            }
+            return 350; // 주차 탭 미발견 시 기본 세이프티 마진
+        }
+
         function toggleStickerLock() {
             isLocked = !isLocked;
-            if (isLocked) { stickerLayer.classList.add('locked'); lockBtn.classList.add('locked'); lockBtn.innerHTML = '스티커 잠금'; }
-            else { stickerLayer.classList.remove('locked'); lockBtn.classList.remove('locked'); lockBtn.innerHTML = '스티커 편집'; }
+            if (isLocked) { 
+                stickerLayer.classList.add('locked'); 
+                lockBtn.classList.add('locked'); 
+                lockBtn.innerHTML = '스티커 잠금'; 
+            } else { 
+                stickerLayer.classList.remove('locked'); 
+                lockBtn.classList.remove('locked'); 
+                lockBtn.innerHTML = '스티커 편집'; 
+            }
         }
 
         document.getElementById('sticker-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(event) { createSticker(event.target.result, 150, 150); };
+            reader.onload = function(event) { 
+                const limitY = getUpperLimitY();
+
+                // 모바일 및 PC 뷰포트 정중앙 좌표 계산
+                const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+                const spawnX = scrollX + (window.innerWidth / 2) - 60; 
+                let spawnY = scrollY + (window.innerHeight / 2) - 60;
+                
+                // 생성될 때 상단 제한선보다 위에 있으면 강제로 제한선 밑으로 소환
+                if (spawnY < limitY) {
+                    spawnY = limitY + 20; 
+                }
+                
+                // 스티커 추가 시에는 자동으로 편집 모드를 활성화해 줍니다.
+                if (isLocked) toggleStickerLock();
+                
+                createSticker(event.target.result, spawnX, spawnY); 
+            };
             reader.readAsDataURL(file);
         });
 
@@ -485,55 +553,87 @@
             div.className = 'sticker';
             div.style.left = left + 'px'; div.style.top = top + 'px';
             div.innerHTML = `<img src="${src}" alt="sticker">`;
-            div.addEventListener('dblclick', async function() {
-                if (!isLocked) {
-                    const ok = await openModal({ title: '스티커 삭제', desc: '이 스티커를 정말 삭제할거긔?', isConfirm: true, confirmText: '그렇긔' });
-                    if (ok) div.remove();
-                }
+
+            // 모바일에서 손쉽게 삭제하는 X 버튼 추가
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-delete-sticker';
+            deleteBtn.innerText = '×';
+            deleteBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); 
+                div.remove();
             });
+            div.appendChild(deleteBtn);
+
+            // --- [PC 드래그 시작] ---
             div.addEventListener('mousedown', function(e) {
                 if (isLocked) return;
                 const rect = div.getBoundingClientRect();
-                if (e.clientX > rect.right - 25 && e.clientY > rect.bottom - 25) return;
+                // 우측 하단 크기 조절 영역 크기(25px) 내를 클릭했다면 드래그 생략하고 리사이즈 허용
+                if (e.clientX > rect.right - 25 && e.clientY > rect.bottom - 25) return; 
+                
                 activeSticker = div;
                 offsetX = e.clientX - div.offsetLeft; offsetY = e.clientY - div.offsetTop;
                 div.style.zIndex = 40;
             });
+
+            // --- [모바일 터치 시작] ---
+            div.addEventListener('touchstart', function(e) {
+                if (isLocked) return;
+                const touch = e.touches[0];
+                const rect = div.getBoundingClientRect();
+                if (touch.clientX > rect.right - 25 && touch.clientY > rect.bottom - 25) return; 
+                
+                activeSticker = div;
+                offsetX = touch.clientX - div.offsetLeft; 
+                offsetY = touch.clientY - div.offsetTop;
+                div.style.zIndex = 40;
+                e.preventDefault(); 
+            }, { passive: false });
+
             stickerLayer.appendChild(div);
         }
 
+        // --- 마우스/터치 이동 처리 (상단 제한선 물리적 강제 적용) ---
         document.addEventListener('mousemove', function(e) {
             if (!activeSticker || isLocked) return;
-            activeSticker.style.left = (e.clientX - offsetX) + 'px';
-            activeSticker.style.top = (e.clientY - offsetY) + 'px';
+            
+            let newLeft = e.clientX - offsetX;
+            let newTop = e.clientY - offsetY;
+
+            const limitY = getUpperLimitY();
+            if (newTop < limitY) {
+                newTop = limitY; // 마우스 이동 시 상단 제한선 강제 차단
+            }
+
+            activeSticker.style.left = newLeft + 'px';
+            activeSticker.style.top = newTop + 'px';
         });
 
         document.addEventListener('mouseup', function() {
             if (activeSticker) { activeSticker.style.zIndex = 30; activeSticker = null; }
         });
 
-        let timerInterval;
-        let totalSeconds = 0;
-        function updateTimerDisplay() {
-            const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-            const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-            const s = String(totalSeconds % 60).padStart(2, '0');
-            document.getElementById('timer').innerText = `${h}:${m}:${s}`;
-        }
-        function addTime(seconds) { totalSeconds += seconds; updateTimerDisplay(); }
-        async function startTimer() {
-            if (totalSeconds <= 0) { await openModal({ title: '⚠️ 폭탄 시간 설정', desc: '+10분, +30분, +50분 버튼을 눌러 시간을 먼저 설정하라긔!', isConfirm: true, confirmText: '알겠긔' }); return; }
-            if (!timerInterval) {
-                timerInterval = setInterval(() => {
-                    if (totalSeconds > 0) { totalSeconds--; updateTimerDisplay(); }
-                    else { pauseTimer(); openModal({ title: '💥 펑! 시한폭탄 종료!', desc: '설정한 시간이 끝났긔! 집중 끝내거나 쉬는 시간 가지라긔!', isConfirm: true, confirmText: '확인했긔' }); }
-                }, 1000);
-            }
-        }
-        function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
-        function resetTimer() { pauseTimer(); totalSeconds = 0; updateTimerDisplay(); }
+        document.addEventListener('touchmove', function(e) {
+            if (!activeSticker || isLocked) return;
+            const touch = e.touches[0];
+            
+            let newLeft = touch.clientX - offsetX;
+            let newTop = touch.clientY - offsetY;
 
-        // --- [수정] 4. DOM 완료 후 방 이름/이름 반영 처리 ---
+            const limitY = getUpperLimitY();
+            if (newTop < limitY) {
+                newTop = limitY; // 모바일 터치 드래그 시에도 상단 제한선 강제 차단
+            }
+
+            activeSticker.style.left = newLeft + 'px';
+            activeSticker.style.top = newTop + 'px';
+            e.preventDefault(); 
+        }, { passive: false });
+
+        document.addEventListener('touchend', function() {
+            if (activeSticker) { activeSticker.style.zIndex = 30; activeSticker = null; }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             const welcomeTitle = document.getElementById('welcome-title');
             if (welcomeTitle) {
